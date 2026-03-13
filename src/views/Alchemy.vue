@@ -3,7 +3,6 @@
     <n-space vertical>
       <template v-if="unlockedRecipes.length > 0">
         <n-divider>丹方选择</n-divider>
-        <!-- 丹方选择 -->
         <n-grid :cols="2" :x-gap="12">
           <n-grid-item v-for="recipe in unlockedRecipes" :key="recipe.id">
             <n-card :title="recipe.name" size="small">
@@ -28,7 +27,6 @@
       <n-space vertical v-else>
         <n-empty description="暂未掌握任何丹方" />
       </n-space>
-      <!-- 材料需求 -->
       <template v-if="selectedRecipe">
         <n-divider>材料需求</n-divider>
         <n-list>
@@ -39,7 +37,7 @@
                 <n-tag size="small">需要数量: {{ material.count }}</n-tag>
               </n-space>
               <n-tag
-                :type="getMaterialStatus(material) === `${material.count}/${material.count}` ? 'success' : 'warning'"
+                :type="isMaterialEnough(material) ? 'success' : 'warning'"
               >
                 拥有: {{ getMaterialStatus(material) }}
               </n-tag>
@@ -47,7 +45,6 @@
           </n-list-item>
         </n-list>
       </template>
-      <!-- 效果预览 -->
       <template v-if="selectedRecipe">
         <n-divider>效果预览</n-divider>
         <n-descriptions bordered :column="2">
@@ -59,7 +56,6 @@
           <n-descriptions-item label="成功率">{{ (currentEffect.successRate * 100).toFixed(1) }}%</n-descriptions-item>
         </n-descriptions>
       </template>
-      <!-- 炼制按钮 -->
       <n-button
         class="craft-button"
         type="primary"
@@ -84,131 +80,94 @@
 
   const playerStore = usePlayerStore()
   const logRef = ref(null)
-
-  // 当前选择的丹方
   const selectedRecipe = ref(null)
 
-  // 已解锁的丹方列表
   const unlockedRecipes = computed(() => {
     return pillRecipes.filter(recipe => playerStore.pillRecipes.includes(recipe.id))
   })
 
-  // 选择丹方
   const selectRecipe = recipe => {
     selectedRecipe.value = recipe
   }
 
-  // 检查材料是否充足
+  // 【修改点】：基于 count 堆叠计算灵草是否充足
   const checkMaterials = recipe => {
     if (!recipe) return false
     return recipe.materials.every(material => {
-      const count = playerStore.herbs.filter(h => h.id === material.herb).length
-      return count >= material.count
+      const totalCount = playerStore.herbs
+        .filter(h => h.id === material.herb)
+        .reduce((sum, h) => sum + (h.count || 1), 0)
+      return totalCount >= material.count
     })
   }
-
-  // 获取材料状态文本
-  const getMaterialStatus = material => {
-    const count = playerStore.herbs.filter(h => h.id === material.herb).length
-    return `${count}/${material.count}`
+  
+  const isMaterialEnough = material => {
+      const totalCount = playerStore.herbs
+        .filter(h => h.id === material.herb)
+        .reduce((sum, h) => sum + (h.count || 1), 0)
+      return totalCount >= material.count
   }
 
-  // 获取灵草名称
+  const getMaterialStatus = material => {
+    const totalCount = playerStore.herbs
+        .filter(h => h.id === material.herb)
+        .reduce((sum, h) => sum + (h.count || 1), 0)
+    return `${totalCount}/${material.count}`
+  }
+
   const getHerbName = herbId => {
     const herb = herbs.find(h => h.id === herbId)
     return herb ? herb.name : herbId
   }
 
-  // 计算当前效果
   const currentEffect = computed(() => {
     if (!selectedRecipe.value) return null
     return calculatePillEffect(selectedRecipe.value, playerStore.level)
   })
 
-  // 炼制丹药
   const craftPill = () => {
     if (!selectedRecipe.value) return
     const result = playerStore.craftPill(selectedRecipe.value.id)
     if (result.success) {
       logRef.value?.addLog('success', '炼制成功！')
-      // 播放成功动画效果
       const btn = document.querySelector('.craft-button')
       if (btn) {
         btn.classList.add('success-animation')
-        setTimeout(() => {
-          btn.classList.remove('success-animation')
-        }, 1000)
+        setTimeout(() => btn.classList.remove('success-animation'), 1000)
       }
     } else {
       logRef.value?.addLog('error', `炼制失败：${result.message}`)
-      // 播放失败动画效果
       const btn = document.querySelector('.craft-button')
       if (btn) {
         btn.classList.add('fail-animation')
-        setTimeout(() => {
-          btn.classList.remove('fail-animation')
-        }, 1000)
+        setTimeout(() => btn.classList.remove('fail-animation'), 1000)
       }
     }
   }
 </script>
 
 <style scoped>
-  .n-space {
-    width: 100%;
-  }
-
-  .n-button {
-    margin-bottom: 12px;
-  }
-
-  .n-collapse {
-    margin-top: 12px;
-  }
-
-  .craft-button {
-    position: relative;
-    overflow: hidden;
-  }
+  .n-space { width: 100%; }
+  .n-button { margin-bottom: 12px; }
+  .n-collapse { margin-top: 12px; }
+  .craft-button { position: relative; overflow: hidden; }
 
   @keyframes success-ripple {
-    0% {
-      transform: scale(0);
-      opacity: 1;
-    }
-    100% {
-      transform: scale(4);
-      opacity: 0;
-    }
+    0% { transform: scale(0); opacity: 1; }
+    100% { transform: scale(4); opacity: 0; }
   }
 
   @keyframes fail-shake {
-    0%,
-    100% {
-      transform: translateX(0);
-    }
-    25% {
-      transform: translateX(-10px);
-    }
-    75% {
-      transform: translateX(10px);
-    }
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-10px); }
+    75% { transform: translateX(10px); }
   }
 
   .success-animation::after {
-    content: '';
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    width: 20px;
-    height: 20px;
-    background: rgba(0, 255, 0, 0.3);
-    border-radius: 50%;
-    transform: translate(-50%, -50%);
+    content: ''; position: absolute; top: 50%; left: 50%; width: 20px; height: 20px;
+    background: rgba(0, 255, 0, 0.3); border-radius: 50%; transform: translate(-50%, -50%);
     animation: success-ripple 1s ease-out;
   }
 
-  .fail-animation {
-    animation: fail-shake 0.5s ease-in-out;
-  }
+  .fail-animation { animation: fail-shake 0.5s ease-in-out; }
 </style>

@@ -87,7 +87,7 @@
   const logRef = ref(null)
   const playerStore = usePlayerStore()
   // 探索相关数值
-  const explorationInterval = 10000 // 探索间隔（毫秒）
+  const explorationInterval = 3000 // 探索间隔（毫秒）
   const exploringLocations = ref({}) // 记录每个地点的探索状态
   const explorationTimers = ref({}) // 记录每个地点的定时器
   const isAutoExploring = ref(false) // 是否有地点正在自动探索

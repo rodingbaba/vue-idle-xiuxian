@@ -50,7 +50,13 @@
     // 监听Worker消息
     logWorker.value.onmessage = e => {
       if (e.data.type === 'LOGS_UPDATED') {
-        logs.value = e.data.logs
+        // 限制并截断日志条数，最大保留200条
+        let newLogs = e.data.logs
+        if (newLogs.length > 200) {
+          newLogs = newLogs.slice(newLogs.length - 200)
+        }
+        logs.value = newLogs
+        
         // 下一帧滚动到底部
         setTimeout(() => {
           if (scrollRef.value) {
