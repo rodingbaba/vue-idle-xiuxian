@@ -38,7 +38,7 @@
 version: '3.9'
 services:
     vue-idle-xiuxian:
-        image: kowming/vue-idle-xiuxian:latest
+        image: ghcr.io/rodingbaba/vue-idle-xiuxian:latest
         container_name: xiuxian
         restart: unless-stopped
         ports:
