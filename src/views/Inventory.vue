@@ -48,14 +48,26 @@
           </n-tab-pane>
           <n-tab-pane name="herbs" tab="灵草">
             <n-grid :cols="2" :x-gap="12" :y-gap="8" v-if="groupedHerbs.length">
-              <n-grid-item v-for="herb in groupedHerbs" :key="herb.id">
+              <n-grid-item v-for="herb in groupedHerbs" :key="`${herb.id}_${herb.quality}`">
                 <n-card hoverable>
                   <template #header>
                     <n-space justify="space-between">
-                      <span>{{ herb.name }}({{ herb.count }})</span>
+                      <n-space align="center">
+                        <span>{{ herb.name }}</span>
+                        <n-tag size="small" :type="herbQualityMap[herb.quality]?.type || 'default'">
+                          {{ herbQualityMap[herb.quality]?.name || '未知' }}
+                        </n-tag>
+                      </n-space>
+                      <span>数量: {{ herb.count }}</span>
                     </n-space>
                   </template>
                   <p>{{ herb.description }}</p>
+                  <template #footer>
+                    <n-space justify="end">
+                      <n-button size="small" type="primary" @click="openHerbModal('consume', herb)">炼化修为</n-button>
+                      <n-button size="small" type="warning" @click="openHerbModal('sell', herb)">出售换石</n-button>
+                    </n-space>
+                  </template>
                 </n-card>
               </n-grid-item>
             </n-grid>
@@ -194,6 +206,26 @@
       </n-card>
     </n-layout-content>
   </n-layout>
+
+  <n-modal v-model:show="showHerbModal" preset="dialog" :title="herbModalType === 'sell' ? '出售灵草' : '炼化灵草'" style="width: 400px">
+    <n-space vertical>
+      <n-alert :type="herbModalType === 'sell' ? 'warning' : 'info'" :show-icon="false">
+        {{ herbModalType === 'sell' ? '将灵草卖给商铺换取大量灵石。' : '生吞炼化灵草，虽不如炼成丹药效果好，但能快速增加大量修为。' }}
+      </n-alert>
+      <n-space justify="space-between" align="center">
+        <span>操作数量 (拥有: {{ selectedHerb?.count }})</span>
+        <n-button size="small" @click="herbActionCount = selectedHerb?.count">最大</n-button>
+      </n-space>
+      <n-slider v-model:value="herbActionCount" :min="1" :max="selectedHerb?.count" :step="1" />
+      <n-input-number v-model:value="herbActionCount" :min="1" :max="selectedHerb?.count" />
+      
+      <n-statistic v-if="herbModalType === 'sell'" label="预计获得灵石" :value="(selectedHerb?.value || 10) * herbActionCount * 5" />
+      <n-statistic v-if="herbModalType === 'consume'" label="预计获得修为" :value="(selectedHerb?.value || 10) * herbActionCount * (playerStore.level * 5)" />
+    </n-space>
+    <template #action>
+      <n-button type="primary" @click="confirmHerbAction">确认{{ herbModalType === 'sell' ? '出售' : '炼化' }}</n-button>
+    </template>
+  </n-modal>
   <n-modal v-model:show="showPetModal" preset="dialog" title="灵宠详情" style="width: 600px">
     <template v-if="selectedPet">
       <n-descriptions bordered>
@@ -325,6 +357,45 @@
   const playerStore = usePlayerStore()
   const message = useMessage()
 
+  // ================= 新增：灵草操作逻辑 =================
+  const showHerbModal = ref(false)
+  const herbModalType = ref('sell') 
+  const selectedHerb = ref(null)
+  const herbActionCount = ref(1)
+
+  const herbQualityMap = {
+    common: { name: '普通', type: 'default' },
+    uncommon: { name: '优质', type: 'info' },
+    rare: { name: '稀有', type: 'success' },
+    epic: { name: '极品', type: 'warning' },
+    legendary: { name: '仙品', type: 'error' }
+  }
+
+  const openHerbModal = (type, herb) => {
+    herbModalType.value = type
+    selectedHerb.value = herb
+    herbActionCount.value = 1
+    showHerbModal.value = true
+  }
+
+  const confirmHerbAction = () => {
+    if (!selectedHerb.value) return
+    let result;
+    if (herbModalType.value === 'sell') {
+      result = playerStore.sellHerb(selectedHerb.value.id, selectedHerb.value.quality, herbActionCount.value)
+    } else {
+      result = playerStore.consumeHerb(selectedHerb.value.id, selectedHerb.value.quality, herbActionCount.value)
+    }
+    
+    if (result.success) {
+      message.success(result.message)
+      showHerbModal.value = false
+    } else {
+      message.error(result.message)
+    }
+  }
+  // ====================================================
+
   const selectedRarityToRelease = ref('all')
   const filteredPets = computed(() => {
     const pets = playerStore.items.filter(item => item.type === 'pet')
@@ -452,14 +523,15 @@
     if (result.success) { message.success(result.message); showEquipmentModal.value = false; showEquipmentDetailModal.value = false } else message.error('装备失败')
   }
 
-  // 【修改点】：直接支持基于 count 的堆叠展示，不需要额外按个数聚合了
+  // 【修改点】：确保灵草列表按 ID 和 品质（Quality）同时分组展示
   const groupedHerbs = computed(() => {
     const groups = {}
     playerStore.herbs.forEach(herb => {
-      if (!groups[herb.name]) {
-        groups[herb.name] = { ...herb, count: herb.count || 1 }
+      const key = `${herb.id}_${herb.quality}`
+      if (!groups[key]) {
+        groups[key] = { ...herb, count: herb.count || 1 }
       } else {
-        groups[herb.name].count += (herb.count || 1)
+        groups[key].count += (herb.count || 1)
       }
     })
     return Object.values(groups)
@@ -474,7 +546,6 @@
     return { complete, incomplete }
   })
 
-  // 【修改点】：基于 count 堆叠的丹药展示
   const groupedPills = computed(() => {
     const groups = {}
     playerStore.items.filter(item => item.type === 'pill').forEach(pill => {

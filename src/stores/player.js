@@ -108,9 +108,6 @@ export const usePlayerStore = defineStore('player', {
         if (savedData) {
           const decryptedData = decryptData(savedData)
           if (decryptedData && validateData(decryptedData)) {
-            // ==========================================
-            // 【核心迁移逻辑】：将旧档无限庞大的散装数组合并为堆叠数组
-            // ==========================================
             const stackedHerbs = [];
             (decryptedData.herbs || []).forEach(h => {
               if (!h) return;
@@ -165,7 +162,6 @@ export const usePlayerStore = defineStore('player', {
 
     async _performSave() {
       try {
-        // 自动清理未出战的垃圾灵宠（凡品、灵品）
         if (this.items) {
           const keepItems = [];
           this.items.forEach(item => {
@@ -244,6 +240,40 @@ export const usePlayerStore = defineStore('player', {
       this.saveData();
     },
 
+    // ==========================================
+    // 【新增功能】：出售灵草与炼化灵草
+    // ==========================================
+    sellHerb(herbId, quality, count) {
+      const index = this.herbs.findIndex(h => h.id === herbId && h.quality === quality);
+      if (index > -1 && this.herbs[index].count >= count) {
+        const herb = this.herbs[index];
+        // 灵石收益 = 灵草基础价值 * 数量 * 适当放大倍率
+        const stoneValue = (herb.value || 10) * count * 5;
+        this.spiritStones += stoneValue;
+        this.herbs[index].count -= count;
+        if (this.herbs[index].count <= 0) this.herbs.splice(index, 1);
+        this.saveData(true);
+        return { success: true, message: `成功出售，获得${stoneValue}灵石` };
+      }
+      return { success: false, message: '灵草数量不足' };
+    },
+
+    consumeHerb(herbId, quality, count) {
+      const index = this.herbs.findIndex(h => h.id === herbId && h.quality === quality);
+      if (index > -1 && this.herbs[index].count >= count) {
+        const herb = this.herbs[index];
+        // 修为收益 = 灵草基础价值 * 数量 * 当前境界等级 (境界越高吸收能力越强)
+        const gain = (herb.value || 10) * count * (this.level * 5);
+        this.cultivate(gain);
+        this.herbs[index].count -= count;
+        if (this.herbs[index].count <= 0) this.herbs.splice(index, 1);
+        this.saveData(true);
+        return { success: true, message: `炼化成功，获得${gain}点修为` };
+      }
+      return { success: false, message: '灵草数量不足' };
+    },
+    // ==========================================
+
     async sellEquipment(equipment) {
       const index = this.items.findIndex(i => i.id === equipment.id)
       if (index === -1) return { success: false, message: '装备不存在' }
@@ -290,7 +320,6 @@ export const usePlayerStore = defineStore('player', {
           endTime: now + pill.effect.duration * 1000
         })
 
-        // 丹药数量扣除逻辑（支持堆叠）
         if (this.items[index].count > 1) {
           this.items[index].count--;
         } else {
@@ -402,24 +431,21 @@ export const usePlayerStore = defineStore('player', {
       this.saveData()
     },
 
-    // 【修改点】：支持堆叠扣除草药、支持堆叠增加丹药
     craftPill(recipeId) {
       const recipe = pillRecipes.find(r => r.id === recipeId)
       if (!recipe || !this.pillRecipes.includes(recipeId)) return { success: false, message: '未掌握丹方' }
 
       const fragments = this.pillFragments[recipeId] || 0
 
-      // 检查材料总量是否足够
       for (const material of recipe.materials) {
         const totalCount = this.herbs.filter(h => h.id === material.herb).reduce((sum, h) => sum + (h.count || 1), 0)
         if (totalCount < material.count) return { success: false, message: '材料不足' }
       }
 
       const grade = pillRecipes.find(r => r.id === recipeId)?.grade;
-      const successRate = grade === 'grade1' ? 0.9 : 0.5; // 简化展示，实际受pills.js配置影响
+      const successRate = grade === 'grade1' ? 0.9 : 0.5;
 
       if (Math.random() <= 0.9 * this.luck * this.alchemyRate) {
-        // 扣除材料
         recipe.materials.forEach(material => {
           let needed = material.count;
           for (let i = this.herbs.length - 1; i >= 0; i--) {
@@ -436,7 +462,6 @@ export const usePlayerStore = defineStore('player', {
           }
         })
 
-        // 创建丹药堆叠
         const effect = calculatePillEffect(recipe, this.level)
         const existPill = this.items.find(i => i.type === 'pill' && i.name === recipe.name)
         if (existPill) {

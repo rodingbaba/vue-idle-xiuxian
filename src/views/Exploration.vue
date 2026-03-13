@@ -76,7 +76,7 @@
 </template>
 
 <script setup>
-  import { ref } from 'vue'
+  import { ref, computed, onMounted, onUnmounted } from 'vue'
   import { usePlayerStore } from '../stores/player'
   import { CompassOutline } from '@vicons/ionicons5'
   import { getRealmName } from '../plugins/realm'
@@ -151,16 +151,6 @@
     initWorker()
   })
 
-  // 组件卸载时清理 Worker 和定时器
-  onUnmounted(() => {
-    if (explorationWorker.value) {
-      explorationWorker.value.terminate()
-    }
-    Object.values(explorationTimers.value).forEach(timer => clearInterval(timer))
-    explorationTimers.value = {}
-    exploringLocations.value = {}
-  })
-
   // 获取可用地点列表
   const availableLocations = computed(() => {
     return locations.filter(loc => playerStore.level >= loc.minLevel)
@@ -198,8 +188,11 @@
     autoExploringLocationId.value = null
   }
 
-  // 组件卸载时清理所有定时器
+  // 组件卸载时清理所有定时器和Worker
   onUnmounted(() => {
+    if (explorationWorker.value) {
+      explorationWorker.value.terminate()
+    }
     Object.values(explorationTimers.value).forEach(timer => clearInterval(timer))
     explorationTimers.value = {}
     exploringLocations.value = {}
