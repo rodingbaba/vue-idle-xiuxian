@@ -129,7 +129,7 @@
     if (!selectedRecipe.value) return
     const result = playerStore.craftPill(selectedRecipe.value.id)
     if (result.success) {
-      logRef.value?.addLog('success', '炼制成功！')
+      logRef.value?.addLog('success', `炼制成功！获得：${result.pillName}`)
       const btn = document.querySelector('.craft-button')
       if (btn) {
         btn.classList.add('success-animation')

@@ -178,8 +178,12 @@
   // 获取成就进度
   const getProgress = achievement => {
     try {
+      const isCompleted = isAchievementCompleted(achievement.id)
+      if (isCompleted) return 100
+      
       const progress = getAchievementProgress(playerStore, achievement)
-      return Number.isFinite(progress) ? Math.min(100, Math.max(0, Math.round(progress))) : 0
+      let displayProgress = Number.isFinite(progress) ? Math.max(0, Math.floor(progress)) : 0
+      return Math.min(99, displayProgress)
     } catch (error) {
       console.error('成就进度报错:', error)
       return 0

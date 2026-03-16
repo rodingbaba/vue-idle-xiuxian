@@ -79,6 +79,7 @@ export const handleReward = (reward, playerStore, showMessage) => {
           } else {
             playerStore.herbs.push({ ...herb, count: 1 });
           }
+          playerStore.itemsFound++
           showMessage('success', `[灵草获取]获得${herbQualities[herb.quality].name}品质的${herb.name}`)
         }
       }
@@ -97,6 +98,7 @@ export const handleReward = (reward, playerStore, showMessage) => {
         const randomRecipe = pillRecipes[Math.floor(Math.random() * pillRecipes.length)]
         if (randomRecipe) {
           playerStore.gainPillFragment(randomRecipe.id)
+          playerStore.itemsFound++
           showMessage('success', `[丹方获取]获得${randomRecipe.name}的丹方残页`)
         }
       }

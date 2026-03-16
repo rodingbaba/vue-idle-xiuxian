@@ -464,22 +464,46 @@ export const usePlayerStore = defineStore('player', {
         })
 
         const effect = calculatePillEffect(recipe, this.level)
-        const existPill = this.items.find(i => i.type === 'pill' && i.name === recipe.name)
+        
+        // 丹药品质判定 (普通 70%, 优质 20%, 极品 8%, 仙品 2%)
+        const qRand = Math.random()
+        let pillQuality = 'common'
+        let effectMultiplier = 1
+        
+        if (qRand > 0.98) {
+          pillQuality = 'mythic'
+          effectMultiplier = 2.0
+          this.highQualityPillsCrafted = (this.highQualityPillsCrafted || 0) + 1
+        } else if (qRand > 0.90) {
+          pillQuality = 'epic'
+          effectMultiplier = 1.5
+        } else if (qRand > 0.70) {
+          pillQuality = 'rare'
+          effectMultiplier = 1.2
+        }
+
+        const finalEffect = { ...effect, value: Number((effect.value * effectMultiplier).toFixed(2)) }
+        const qualityNameMap = { common: '', rare: '优质', epic: '极品', mythic: '仙品' }
+        const prefix = qualityNameMap[pillQuality]
+        const finalName = prefix ? `${prefix}·${recipe.name}` : recipe.name
+
+        const existPill = this.items.find(i => i.type === 'pill' && i.name === finalName)
         if (existPill) {
           existPill.count = (existPill.count || 1) + 1;
         } else {
           this.items.push(markRaw({
             id: recipe.id,
-            name: recipe.name,
+            name: finalName,
             description: recipe.description,
             type: 'pill',
-            effect,
+            quality: pillQuality,
+            effect: finalEffect,
             count: 1
           }))
         }
         this.pillsCrafted++
         this.saveData(true)
-        return { success: true, message: '炼制成功' }
+        return { success: true, message: '炼制成功', pillName: finalName }
       }
       return { success: false, message: '炼制失败' }
     },

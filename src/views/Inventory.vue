@@ -79,8 +79,16 @@
                 <n-card hoverable>
                   <template #header>
                     <n-space justify="space-between">
-                      <span>{{ pill.name }}({{ pill.count }})</span>
-                      <n-button size="small" type="primary" @click="usePill(pill)">服用</n-button>
+                      <n-space align="center">
+                        <span>{{ pill.name }}</span>
+                        <n-tag size="small" :type="herbQualityMap[pill.quality]?.type || 'default'" v-if="pill.quality">
+                          {{ herbQualityMap[pill.quality]?.name || '未知' }}
+                        </n-tag>
+                      </n-space>
+                      <n-space align="center">
+                        <span>数量: {{ pill.count }}</span>
+                        <n-button size="small" type="primary" @click="usePill(pill)">服用</n-button>
+                      </n-space>
                     </n-space>
                   </template>
                   <p>{{ pill.description }}</p>

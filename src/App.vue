@@ -136,6 +136,14 @@
                             {{ (playerStore.specialAttributes.resistanceBoost * 100 || 0).toFixed(1) }}%
                           </n-descriptions-item>
                         </n-descriptions>
+                        
+                        <n-divider v-if="playerStore.getActiveEffects().length > 0">当前丹药增益</n-divider>
+                        <n-descriptions bordered :column="3" v-if="playerStore.getActiveEffects().length > 0">
+                          <n-descriptions-item v-for="(effect, index) in playerStore.getActiveEffects()" :key="index" :label="getEffectName(effect.type)">
+                            +{{ (effect.value * 100).toFixed(1) }}% 
+                            <n-text depth="3" style="margin-left:8px;font-size:12px;">({{ formatDuration(effect.endTime) }})</n-text>
+                          </n-descriptions-item>
+                        </n-descriptions>
                       </n-collapse-item>
                     </n-collapse>
                     <n-progress
@@ -163,7 +171,7 @@
 <script setup>
   import { useRouter, useRoute } from 'vue-router'
   import { usePlayerStore } from './stores/player'
-  import { h, ref } from 'vue'
+  import { h, ref, onMounted, onUnmounted, watch } from 'vue'
   import { NIcon, darkTheme } from 'naive-ui'
   import {
     BookOutlined,
@@ -303,6 +311,45 @@
   // 菜单点击事件
   const handleMenuClick = key => {
     router.push(`/${key}`)
+  }
+
+  // 丹药效果翻译
+  const getEffectName = type => {
+    const names = {
+      spiritRate: '灵力获取效率',
+      cultivationRate: '修为获取效率',
+      combatBoost: '战斗属性提升',
+      allAttributes: '全属性提升',
+      spiritCap: '灵力上限提升',
+      autoHeal: '战斗自动恢复',
+      spiritRecovery: '灵力恢复速度',
+      cultivationEfficiency: '修炼效率',
+      comprehension: '悟性加成',
+      fireAttribute: '火属性强化'
+    }
+    return names[type] || type
+  }
+
+  // 格式化时间剩余显示
+  const now = ref(Date.now())
+  let timeTicker = null
+  onMounted(() => {
+    startAutoGain() // 启动自动获取灵力
+    timeTicker = setInterval(() => { now.value = Date.now() }, 1000)
+  })
+  onUnmounted(() => {
+    if (timeTicker) clearInterval(timeTicker)
+  })
+  
+  const formatDuration = endTime => {
+    const remain = Math.max(0, endTime - now.value)
+    if (remain === 0) return '已结束'
+    const s = Math.floor(remain / 1000)
+    const m = Math.floor(s / 60)
+    const h = Math.floor(m / 60)
+    if (h > 0) return `${h}小时${m % 60}分`
+    if (m > 0) return `${m}分${s % 60}秒`
+    return `${s}秒`
   }
 </script>
 

@@ -90,7 +90,7 @@ export const achievements = {
     {
       id: 'equipment_7',
       name: '装备鉴赏家',
-      description: '拥有20件不同部位的装备',
+      description: '拥有10件不同部位的装备',
       condition: player => {
         const allEquipment = [
           ...Object.values(player.equippedArtifacts).filter(e => e !== null),
@@ -514,70 +514,70 @@ export const achievements = {
       id: 'collection_1',
       name: '初识灵草',
       description: '收集首株灵草',
-      condition: player => player.herbs.length >= 1,
+      condition: player => (player.herbs || []).reduce((sum, h) => sum + (h.count || 1), 0) >= 1,
       reward: { spirit: 100 }
     },
     {
       id: 'collection_2',
       name: '灵草学徒',
       description: '收集5种不同灵草',
-      condition: player => new Set(player.herbs.map(h => h.id)).size >= 5,
+      condition: player => new Set((player.herbs || []).map(h => h.id)).size >= 5,
       reward: { spirit: 500 }
     },
     {
       id: 'collection_3',
       name: '灵草收藏家',
       description: '收集10种不同灵草',
-      condition: player => new Set(player.herbs.map(h => h.id)).size >= 10,
+      condition: player => new Set((player.herbs || []).map(h => h.id)).size >= 10,
       reward: { spirit: 1000 }
     },
     {
       id: 'collection_4',
       name: '灵草猎人',
       description: '收集50株灵草',
-      condition: player => player.herbs.length >= 50,
+      condition: player => (player.herbs || []).reduce((sum, h) => sum + (h.count || 1), 0) >= 50,
       reward: { spirit: 2000, herbRate: 1 }
     },
     {
       id: 'collection_5',
       name: '灵草园主',
       description: '拥有100株灵草',
-      condition: player => player.herbs.length >= 100,
+      condition: player => (player.herbs || []).reduce((sum, h) => sum + (h.count || 1), 0) >= 100,
       reward: { spirit: 5000, herbRate: 1.5 }
     },
     {
       id: 'collection_6',
       name: '灵草之巅',
       description: '收集200株灵草',
-      condition: player => player.herbs.length >= 200,
+      condition: player => (player.herbs || []).reduce((sum, h) => sum + (h.count || 1), 0) >= 200,
       reward: { spirit: 30000, herbRate: 2 }
     },
     {
       id: 'collection_7',
       name: '仙品收藏',
       description: '收集100个稀有灵草',
-      condition: player => player.herbs.filter(h => h.quality === 'rare').length >= 100,
+      condition: player => (player.herbs || []).filter(h => h.quality === 'rare').reduce((sum, h) => sum + (h.count || 1), 0) >= 100,
       reward: { spirit: 2000, herbRate: 1 }
     },
     {
       id: 'collection_8',
       name: '灵草大师',
       description: '收集100株极品灵草',
-      condition: player => player.herbs.filter(h => h.quality === 'epic').length >= 100,
+      condition: player => (player.herbs || []).filter(h => h.quality === 'epic').reduce((sum, h) => sum + (h.count || 1), 0) >= 100,
       reward: { spirit: 5000, herbRate: 1.3 }
     },
     {
       id: 'collection_9',
       name: '仙草收集者',
       description: '收集100株仙品灵草',
-      condition: player => player.herbs.filter(h => h.quality === 'mythic').length >= 100,
+      condition: player => (player.herbs || []).filter(h => h.quality === 'mythic' || h.quality === 'legendary').reduce((sum, h) => sum + (h.count || 1), 0) >= 100,
       reward: { spirit: 10000, herbRate: 1.5 }
     },
     {
       id: 'collection_10',
       name: '灵草大师',
       description: '收集所有种类灵草',
-      condition: player => new Set(player.herbs.map(h => h.id)).size >= 15,
+      condition: player => new Set((player.herbs || []).map(h => h.id)).size >= 15,
       reward: { spirit: 3000, herbRate: 1.2 }
     }
   ],
@@ -791,67 +791,79 @@ export const getAchievementProgress = (player, achievement) => {
       } else if (achievement.id === 'dungeon_combat_5') {
         return Math.min(100, ((player.dungeonEliteKills || 0) / 50) * 100)
       } else if (['dungeon_combat_6', 'dungeon_combat_7', 'dungeon_combat_8'].includes(achievement.id)) {
-        const matches = achievement.description.match(/\d+/)
-        const targetKills = matches ? parseInt(matches[0]) : 10
+        const targets = { 'dungeon_combat_6': 10, 'dungeon_combat_7': 50, 'dungeon_combat_8': 100 }
+        const targetKills = targets[achievement.id] || 10
         return Math.min(100, ((player.dungeonBossKills || 0) / targetKills) * 100)
       } else {
-        const matches = achievement.description.match(/\d+/)
-        const targetKills = matches ? parseInt(matches[0]) : 10
+        const targets = { 'dungeon_combat_1': 10, 'dungeon_combat_3': 100, 'dungeon_combat_4': 500, 'dungeon_combat_9': 1000, 'dungeon_combat_10': 10000 }
+        const targetKills = targets[achievement.id] || 10
         return Math.min(100, ((player.dungeonTotalKills || 0) / targetKills) * 100)
       }
     } else if (achievement.id.startsWith('dungeon_')) {
       if (achievement.id === 'dungeon_1') return Math.min(100, ((player.dungeonTotalRuns || 0) / 1) * 100)
-      const matches = achievement.description.match(/\d+/)
-      const targetFloor = matches ? parseInt(matches[0]) : 100
+      const targets = { 'dungeon_2': 5, 'dungeon_3': 10, 'dungeon_4': 20, 'dungeon_5': 30, 'dungeon_6': 50, 'dungeon_7': 75, 'dungeon_8': 100, 'dungeon_9': 150, 'dungeon_10': 200 }
+      const targetFloor = targets[achievement.id] || 100
       return Math.min(100, ((player.dungeonHighestFloor || 0) / targetFloor) * 100)
     } else if (achievement.id.startsWith('cultivation_')) {
       if (achievement.id === 'cultivation_1') return player.totalCultivationTime > 0 ? 100 : 0;
-      const matches = achievement.condition.toString().match(/>=\s*(\d+)/)
-      const targetTime = matches ? parseInt(matches[1]) : 3600
+      const targets = {
+        'cultivation_2': 1800,
+        'cultivation_3': 3600,
+        'cultivation_4': 43200,
+        'cultivation_5': 172800,
+        'cultivation_6': 86400,
+        'cultivation_7': 604800,
+        'cultivation_8': 1296000,
+        'cultivation_9': 2592000,
+        'cultivation_10': 8640000
+      };
+      const targetTime = targets[achievement.id] || 3600;
       return Math.min(100, ((player.totalCultivationTime || 0) / targetTime) * 100)
     } else if (achievement.id.startsWith('breakthrough_')) {
       if (['breakthrough_6', 'breakthrough_7', 'breakthrough_8', 'breakthrough_9', 'breakthrough_10'].includes(achievement.id)) {
         const targetLevels = { 'breakthrough_6': 37, 'breakthrough_7': 46, 'breakthrough_8': 64, 'breakthrough_9': 82, 'breakthrough_10': 126 }
         return Math.min(100, ((player.level || 1) / targetLevels[achievement.id]) * 100)
       } else {
-        const matches = achievement.description.match(/\d+/)
-        const targetCount = matches ? parseInt(matches[0]) : 1
+        const targets = { 'breakthrough_1': 1, 'breakthrough_2': 5, 'breakthrough_3': 10, 'breakthrough_4': 50, 'breakthrough_5': 100 }
+        const targetCount = targets[achievement.id] || 1
         return Math.min(100, ((player.breakthroughCount || 0) / targetCount) * 100)
       }
     } else if (achievement.id.startsWith('exploration_')) {
       if (achievement.id === 'exploration_8') {
-        const matches = achievement.description.match(/\d+/)
-        const targetCount = matches ? parseInt(matches[0]) : 100
-        return Math.min(100, ((player.itemsFound || 0) / targetCount) * 100)
+        return Math.min(100, ((player.itemsFound || 0) / 100) * 100)
       } else if (['exploration_9', 'exploration_10'].includes(achievement.id)) {
-        const matches = achievement.description.match(/\d+/)
-        const targetCount = matches ? parseInt(matches[0]) : 100
+        const targets = { 'exploration_9': 100, 'exploration_10': 500 }
+        const targetCount = targets[achievement.id] || 100
         return Math.min(100, ((player.eventTriggered || 0) / targetCount) * 100)
       } else {
-        const matches = achievement.description.match(/\d+/)
-        const targetCount = matches ? parseInt(matches[0]) : 1
+        const targets = { 'exploration_1': 1, 'exploration_2': 10, 'exploration_3': 50, 'exploration_4': 100, 'exploration_5': 200, 'exploration_6': 500, 'exploration_7': 1000 }
+        const targetCount = targets[achievement.id] || 1
         return Math.min(100, ((player.explorationCount || 0) / targetCount) * 100)
       }
     } else if (achievement.id.startsWith('collection_')) {
       if (['collection_2', 'collection_3', 'collection_10'].includes(achievement.id)) {
-        const matches = achievement.description.match(/\d+/)
-        const targetTypes = matches ? parseInt(matches[0]) : (achievement.id === 'collection_10' ? 15 : 10)
+        const targets = { 'collection_2': 5, 'collection_3': 10, 'collection_10': 15 }
+        const targetTypes = targets[achievement.id] || 10
         const uniqueHerbs = new Set((player.herbs || []).map(h => h.id)).size
         return Math.min(100, (uniqueHerbs / targetTypes) * 100)
       } else if (achievement.id === 'collection_7') {
-        return Math.min(100, (((player.herbs || []).filter(h => h.quality === 'rare').length) / 100) * 100)
+        const sum = (player.herbs || []).filter(h => h.quality === 'rare').reduce((acc, h) => acc + (h.count || 1), 0);
+        return Math.min(100, (sum / 100) * 100)
       } else if (achievement.id === 'collection_8') {
-        return Math.min(100, (((player.herbs || []).filter(h => h.quality === 'epic').length) / 100) * 100)
+        const sum = (player.herbs || []).filter(h => h.quality === 'epic').reduce((acc, h) => acc + (h.count || 1), 0);
+        return Math.min(100, (sum / 100) * 100)
       } else if (achievement.id === 'collection_9') {
-        return Math.min(100, (((player.herbs || []).filter(h => h.quality === 'mythic').length) / 100) * 100)
+        const sum = (player.herbs || []).filter(h => h.quality === 'mythic' || h.quality === 'legendary').reduce((acc, h) => acc + (h.count || 1), 0);
+        return Math.min(100, (sum / 100) * 100)
       } else {
-        const matches = achievement.description.match(/\d+/)
-        const targetAmount = matches ? parseInt(matches[0]) : 1
-        return Math.min(100, ((player.herbs || []).length / targetAmount) * 100)
+        const targets = { 'collection_1': 1, 'collection_4': 50, 'collection_5': 100, 'collection_6': 200 }
+        const targetAmount = targets[achievement.id] || 1
+        const sum = (player.herbs || []).reduce((acc, h) => acc + (h.count || 1), 0);
+        return Math.min(100, (sum / targetAmount) * 100)
       }
     } else if (achievement.id.startsWith('resources_')) {
-      const matches = achievement.description.match(/\d+/)
-      const targetStones = matches ? parseInt(matches[0]) : 100
+      const targets = { 'resources_1': 1, 'resources_2': 1000, 'resources_3': 5000, 'resources_4': 10000, 'resources_5': 50000, 'resources_6': 100000, 'resources_7': 500000, 'resources_8': 1000000, 'resources_9': 5000000, 'resources_10': 10000000 }
+      const targetStones = targets[achievement.id] || 100
       return Math.min(100, ((player.spiritStones || 0) / targetStones) * 100)
     } else if (achievement.id.startsWith('alchemy_')) {
       if (achievement.id === 'alchemy_9') {
@@ -859,9 +871,28 @@ export const getAchievementProgress = (player, achievement) => {
       } else if (achievement.id === 'alchemy_10') {
         return Math.min(100, ((player.highQualityPillsCrafted || 0) / 100) * 100)
       } else {
-        const matches = achievement.description.match(/\d+/)
-        const targetPills = matches ? parseInt(matches[0]) : 1
+        const targets = { 'alchemy_1': 1, 'alchemy_2': 5, 'alchemy_3': 10, 'alchemy_4': 50, 'alchemy_5': 100, 'alchemy_6': 500, 'alchemy_7': 1000, 'alchemy_8': 10000 }
+        const targetPills = targets[achievement.id] || 1
         return Math.min(100, ((player.pillsCrafted || 0) / targetPills) * 100)
+      }
+    } else if (achievement.id.startsWith('equipment_')) {
+      const allEquipCount = () => {
+        const equippedCount = Object.values(player.equippedArtifacts || {}).filter(e => e !== null).length;
+        const inventoryCount = player.equipment?.length || 0;
+        return equippedCount + inventoryCount;
+      };
+      if (achievement.id === 'equipment_1') return Math.min(100, (allEquipCount() / 1) * 100);
+      else if (achievement.id === 'equipment_2') return Math.min(100, (allEquipCount() / 10) * 100);
+      else if (achievement.id === 'equipment_7') {
+        const allEquipment = [
+          ...Object.values(player.equippedArtifacts || {}).filter(e => e !== null),
+          ...(player.equipment || [])
+        ];
+        return Math.min(100, (new Set(allEquipment.map(e => e.type)).size / 10) * 100);
+      } else if (achievement.id === 'equipment_8') {
+        const equippedMythic = Object.values(player.equippedArtifacts || {}).filter(e => e?.quality === 'mythic').length;
+        const inventoryMythic = (player.equipment || []).filter(e => e.quality === 'mythic').length;
+        return Math.min(100, ((equippedMythic + inventoryMythic) / 5) * 100);
       }
     }
     return 0
