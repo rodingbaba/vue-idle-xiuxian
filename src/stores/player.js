@@ -67,7 +67,8 @@ export const usePlayerStore = defineStore('player', {
     dungeonLastFailedFloor: 0, dungeonTotalRuns: 0, dungeonBossKills: 0, dungeonEliteKills: 0, dungeonTotalKills: 0, dungeonDeathCount: 0, dungeonTotalRewards: 0,
     autoSellQualities: [], autoReleaseRarities: [],
     wishlistEnabled: false, selectedWishEquipQuality: null, selectedWishPetRarity: null,
-    unlockedRealms: ['练气一层'], unlockedLocations: ['新手村'], unlockedSkills: [], completedAchievements: []
+    unlockedRealms: ['练气一层'], unlockedLocations: ['新手村'], unlockedSkills: [], completedAchievements: [],
+    achievementUnlockTimes: {}
   }),
   getters: {
     getPetBonus() {
