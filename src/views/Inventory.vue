@@ -226,6 +226,7 @@
       <n-button type="primary" @click="confirmHerbAction">确认{{ herbModalType === 'sell' ? '出售' : '炼化' }}</n-button>
     </template>
   </n-modal>
+  
   <n-modal v-model:show="showPetModal" preset="dialog" title="灵宠详情" style="width: 600px">
     <template v-if="selectedPet">
       <n-descriptions bordered>
@@ -301,25 +302,61 @@
     </n-space>
   </n-modal>
 
-  <n-modal v-model:show="showEquipmentDetailModal" preset="dialog" :title="selectedEquipment?.name || '装备详情'">
-    <n-descriptions bordered>
-      <n-descriptions-item label="品质"><span :style="{ color: selectedEquipment?.qualityInfo.color }">{{ selectedEquipment?.qualityInfo.name }}</span></n-descriptions-item>
-      <n-descriptions-item label="类型">{{ equipmentTypes[selectedEquipment?.type] }}</n-descriptions-item>
-      <n-descriptions-item label="强化等级">+{{ selectedEquipment?.enhanceLevel || 0 }}</n-descriptions-item>
-      <template v-if="selectedEquipment?.stats">
-        <n-descriptions-item v-for="(value, stat) in selectedEquipment.stats" :key="stat" :label="getStatName(stat)">{{ formatStatValue(stat, value) }}</n-descriptions-item>
-      </template>
-    </n-descriptions>
+  <n-modal v-model:show="showEquipmentDetailModal" preset="dialog" :title="selectedEquipment?.name || '装备详情'" style="width: 700px">
+    <n-grid :cols="currentEquipped && currentEquipped.id !== selectedEquipment?.id ? 2 : 1" :x-gap="16">
+      
+      <n-grid-item v-if="currentEquipped && currentEquipped.id !== selectedEquipment?.id">
+        <n-divider style="margin-top: 0">当前装备: {{ currentEquipped.name }}</n-divider>
+        <n-descriptions bordered :column="1" size="small">
+          <n-descriptions-item label="品质">
+            <span :style="{ color: currentEquipped.qualityInfo.color }">{{ currentEquipped.qualityInfo.name }}</span>
+          </n-descriptions-item>
+          <n-descriptions-item label="类型">{{ equipmentTypes[currentEquipped.type] }}</n-descriptions-item>
+          <n-descriptions-item label="强化等级">+{{ currentEquipped.enhanceLevel || 0 }}</n-descriptions-item>
+          <template v-if="currentEquipped.stats">
+            <n-descriptions-item v-for="(value, stat) in currentEquipped.stats" :key="stat" :label="getStatName(stat)">
+              {{ formatStatValue(stat, value) }}
+            </n-descriptions-item>
+          </template>
+        </n-descriptions>
+      </n-grid-item>
+
+      <n-grid-item>
+        <n-divider style="margin-top: 0">
+          {{ currentEquipped && currentEquipped.id !== selectedEquipment?.id ? '新装备属性' : '装备属性' }}
+        </n-divider>
+        <n-descriptions bordered :column="1" size="small">
+          <n-descriptions-item label="品质">
+            <span :style="{ color: selectedEquipment?.qualityInfo.color }">{{ selectedEquipment?.qualityInfo.name }}</span>
+          </n-descriptions-item>
+          <n-descriptions-item label="类型">{{ equipmentTypes[selectedEquipment?.type] }}</n-descriptions-item>
+          <n-descriptions-item label="强化等级">+{{ selectedEquipment?.enhanceLevel || 0 }}</n-descriptions-item>
+          <template v-if="selectedEquipment?.stats">
+            <n-descriptions-item v-for="(value, stat) in selectedEquipment.stats" :key="stat" :label="getStatName(stat)">
+              <n-space align="center" :size="4">
+                <span>{{ formatStatValue(stat, value) }}</span>
+                <template v-if="getStatDiff(stat, value)">
+                  <n-text :type="getStatDiff(stat, value).isPositive ? 'success' : 'error'">
+                    ({{ getStatDiff(stat, value).isPositive ? '↑' : '↓' }} {{ formatStatValue(stat, Math.abs(getStatDiff(stat, value).value)) }})
+                  </n-text>
+                </template>
+              </n-space>
+            </n-descriptions-item>
+          </template>
+        </n-descriptions>
+      </n-grid-item>
+    </n-grid>
+
     <template #action>
-      <n-space justify="space-between">
+      <n-space justify="space-between" style="width: 100%">
         <n-space>
           <n-button type="primary" @click="showEnhanceConfirm = true" :disabled="(selectedEquipment?.enhanceLevel || 0) >= 100">强化</n-button>
           <n-button type="info" :disabled="playerStore.refinementStones === 0" @click="handleReforgeEquipment">洗练</n-button>
         </n-space>
         <n-space>
-          <n-button @click="equipItem(selectedEquipment)" :disabled="playerStore.level < selectedEquipment?.requiredRealm" v-if="selectedEquipment?.id != playerStore.equippedArtifacts[selectedEquipment?.slot]?.id">装备</n-button>
-          <n-button @click="unequipItem(selectedEquipment?.slot)" :disabled="playerStore.level < selectedEquipment?.requiredRealm" v-else>卸下</n-button>
-          <n-button type="error" @click="sellEquipment(selectedEquipment)" v-if="selectedEquipment?.id != playerStore.equippedArtifacts[selectedEquipment?.slot]?.id">出售</n-button>
+          <n-button @click="equipItem(selectedEquipment)" :disabled="playerStore.level < selectedEquipment?.requiredRealm" v-if="selectedEquipment?.id != playerStore.equippedArtifacts[selectedEquipment?.slot || selectedEquipment?.type]?.id">装备</n-button>
+          <n-button @click="unequipItem(selectedEquipment?.slot || selectedEquipment?.type)" :disabled="playerStore.level < selectedEquipment?.requiredRealm" v-else>卸下</n-button>
+          <n-button type="error" @click="sellEquipment(selectedEquipment)" v-if="selectedEquipment?.id != playerStore.equippedArtifacts[selectedEquipment?.slot || selectedEquipment?.type]?.id">出售</n-button>
         </n-space>
       </n-space>
     </template>
@@ -497,9 +534,38 @@
     if (result.success) { message.success(result.message); showEquipmentDetailModal.value = false } else message.error('卖出失败')
   }
 
+  // ================= 新增：装备对比逻辑 =================
   const showEquipmentDetailModal = ref(false)
   const selectedEquipment = ref(null)
+
+  // 获取当前角色同一部位已装备的物品
+  const currentEquipped = computed(() => {
+    if (!selectedEquipment.value) return null
+    // 兼容取槽位或类型字段
+    const slot = selectedEquipment.value.slot || selectedEquipment.value.type
+    return playerStore.equippedArtifacts[slot]
+  })
+
+  // 计算与当前装备的属性差值
+  const getStatDiff = (stat, newValue) => {
+    // 如果没有装备，或者正在查看的装备就是身上的装备，则不需要对比
+    if (!currentEquipped.value || currentEquipped.value.id === selectedEquipment.value?.id) return null
+    
+    // 获取旧装备对应属性的值（如果没有这个属性则视为0）
+    const oldValue = currentEquipped.value.stats?.[stat] || 0
+    const diff = newValue - oldValue
+    
+    // 如果属性没有变化，则返回 null
+    if (diff === 0) return null
+    
+    return {
+      isPositive: diff > 0,
+      value: diff
+    }
+  }
+
   const showEquipmentDetails = equipment => { selectedEquipment.value = equipment; showEquipmentDetailModal.value = true }
+  // ====================================================
 
   const showEnhanceConfirm = ref(false)
   const handleEnhanceEquipment = () => {
@@ -523,7 +589,6 @@
     if (result.success) { message.success(result.message); showEquipmentModal.value = false; showEquipmentDetailModal.value = false } else message.error('装备失败')
   }
 
-  // 【修改点】：确保灵草列表按 ID 和 品质（Quality）同时分组展示
   const groupedHerbs = computed(() => {
     const groups = {}
     playerStore.herbs.forEach(herb => {
