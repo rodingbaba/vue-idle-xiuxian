@@ -4,6 +4,7 @@ import { GameDB } from './db'
 import { pillRecipes, tryCreatePill, calculatePillEffect } from '../plugins/pills'
 import { encryptData, decryptData, validateData } from '../plugins/crypto'
 import { getRealmName, getRealmLength } from '../plugins/realm'
+import { herbQualities } from '../plugins/herbs'
 
 let saveTimeout = null;
 
@@ -315,11 +316,32 @@ export const usePlayerStore = defineStore('player', {
       const index = this.items.findIndex(i => i.type === 'pill' && i.name === pill.name)
       if (index > -1) {
         const now = Date.now()
-        this.activeEffects.push({
-          ...pill.effect,
-          startTime: now,
-          endTime: now + pill.effect.duration * 1000
-        })
+        
+        // 查找是否已有同类型的增益效果生效中
+        const existingIndex = this.activeEffects.findIndex(e => e.type === pill.effect.type)
+        if (existingIndex > -1) {
+          const existing = this.activeEffects[existingIndex]
+          if (existing.value === pill.effect.value) {
+            // 同品质 (效果数值相同)，累计时长
+            const remaining = Math.max(0, existing.endTime - now)
+            existing.endTime = now + remaining + pill.effect.duration * 1000
+          } else if (pill.effect.value > existing.value) {
+            // 数值更高，高数值覆盖低数值
+            existing.value = pill.effect.value
+            existing.startTime = now
+            existing.endTime = now + pill.effect.duration * 1000
+          } else {
+            // 新丹药效果较弱，由于“以高数值为准且同类别不叠加”，阻止使用
+            return { success: false, message: '已有更强的同类增益生效中，无法使用' }
+          }
+        } else {
+          // 没有同类增益，直接添加
+          this.activeEffects.push({
+            ...pill.effect,
+            startTime: now,
+            endTime: now + pill.effect.duration * 1000
+          })
+        }
 
         if (this.items[index].count > 1) {
           this.items[index].count--;
@@ -432,7 +454,7 @@ export const usePlayerStore = defineStore('player', {
       this.saveData()
     },
 
-    craftPill(recipeId) {
+    craftPill(recipeId, useStrategy = 'lowest') {
       const recipe = pillRecipes.find(r => r.id === recipeId)
       if (!recipe || !this.pillRecipes.includes(recipeId)) return { success: false, message: '未掌握丹方' }
 
@@ -447,37 +469,66 @@ export const usePlayerStore = defineStore('player', {
       const successRate = grade === 'grade1' ? 0.9 : 0.5;
 
       if (Math.random() <= 0.9 * this.luck * this.alchemyRate) {
+        let totalUsedValue = 0 // 用于计算平均品质评分
+        let totalUsedAmount = 0 
+
         recipe.materials.forEach(material => {
           let needed = material.count;
-          for (let i = this.herbs.length - 1; i >= 0; i--) {
-            if (this.herbs[i].id === material.herb) {
-              if (this.herbs[i].count > needed) {
-                this.herbs[i].count -= needed;
+          totalUsedAmount += needed;
+
+          // 收集当前玩家拥有的针对此药材的真实对象数组
+          let availableHerbs = this.herbs
+            .map((h, index) => ({ ...h, index })) // 记录原数组索引
+            .filter(h => h.id === material.herb);
+
+          // 按品质排序
+          availableHerbs.sort((a, b) => {
+            const valA = herbQualities[a.quality]?.value || 1;
+            const valB = herbQualities[b.quality]?.value || 1;
+            return useStrategy === 'lowest' ? valA - valB : valB - valA;
+          });
+
+          for (let sortedHerb of availableHerbs) {
+            const realIndex = this.herbs.findIndex(h => h.id === sortedHerb.id && h.quality === sortedHerb.quality);
+            if (realIndex > -1) {
+              const qualityValue = herbQualities[this.herbs[realIndex].quality]?.value || 1;
+              if (this.herbs[realIndex].count > needed) {
+                totalUsedValue += needed * qualityValue;
+                this.herbs[realIndex].count -= needed;
                 needed = 0;
                 break;
               } else {
-                needed -= (this.herbs[i].count || 1);
-                this.herbs.splice(i, 1);
+                totalUsedValue += (this.herbs[realIndex].count || 1) * qualityValue;
+                needed -= (this.herbs[realIndex].count || 1);
+                this.herbs.splice(realIndex, 1);
               }
             }
           }
         })
 
+        // 计算平均灵草品质分
+        const qualityScore = totalUsedAmount > 0 ? totalUsedValue / totalUsedAmount : 1; 
         const effect = calculatePillEffect(recipe, this.level)
         
-        // 丹药品质判定 (普通 70%, 优质 20%, 极品 8%, 仙品 2%)
+        // 丹药品质判定 (动态按品质分放大高级丹药出率)
         const qRand = Math.random()
         let pillQuality = 'common'
         let effectMultiplier = 1
         
-        if (qRand > 0.98) {
+        // 原始基准概率: 仙品 2%, 极品 8%, 优质 20%
+        // qualityScore 取值范围: 1(全普通) ~ 5(全仙品)
+        const mythicChance = 0.02 * qualityScore
+        const epicChance = 0.08 * qualityScore
+        const rareChance = 0.20 * qualityScore
+
+        if (qRand <= mythicChance) {
           pillQuality = 'mythic'
           effectMultiplier = 2.0
           this.highQualityPillsCrafted = (this.highQualityPillsCrafted || 0) + 1
-        } else if (qRand > 0.90) {
+        } else if (qRand <= mythicChance + epicChance) {
           pillQuality = 'epic'
           effectMultiplier = 1.5
-        } else if (qRand > 0.70) {
+        } else if (qRand <= mythicChance + epicChance + rareChance) {
           pillQuality = 'rare'
           effectMultiplier = 1.2
         }

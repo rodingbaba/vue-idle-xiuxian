@@ -53,9 +53,20 @@
           </n-descriptions-item>
           <n-descriptions-item label="效果数值">+{{ (currentEffect.value * 100).toFixed(1) }}%</n-descriptions-item>
           <n-descriptions-item label="持续时间">{{ Math.floor(currentEffect.duration / 60) }}分钟</n-descriptions-item>
-          <n-descriptions-item label="成功率">{{ (currentEffect.successRate * 100).toFixed(1) }}%</n-descriptions-item>
+          <n-descriptions-item label="基础成功率">{{ (currentEffect.successRate * 100).toFixed(1) }}%</n-descriptions-item>
         </n-descriptions>
       </template>
+
+      <template v-if="selectedRecipe">
+        <n-divider>炼制策略</n-divider>
+        <n-space justify="center">
+          <n-radio-group v-model:value="useStrategy" name="useStrategy">
+            <n-radio-button value="lowest">优先使用低品质</n-radio-button>
+            <n-radio-button value="highest">优先使用高品质(提高极品率)</n-radio-button>
+          </n-radio-group>
+        </n-space>
+      </template>
+
       <n-button
         class="craft-button"
         type="primary"
@@ -81,6 +92,7 @@
   const playerStore = usePlayerStore()
   const logRef = ref(null)
   const selectedRecipe = ref(null)
+  const useStrategy = ref('lowest')
 
   const unlockedRecipes = computed(() => {
     return pillRecipes.filter(recipe => playerStore.pillRecipes.includes(recipe.id))
@@ -127,7 +139,7 @@
 
   const craftPill = () => {
     if (!selectedRecipe.value) return
-    const result = playerStore.craftPill(selectedRecipe.value.id)
+    const result = playerStore.craftPill(selectedRecipe.value.id, useStrategy.value)
     if (result.success) {
       logRef.value?.addLog('success', `炼制成功！获得：${result.pillName}`)
       const btn = document.querySelector('.craft-button')
