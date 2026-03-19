@@ -42,22 +42,22 @@ services:
         container_name: xiuxian
         restart: unless-stopped
         ports:
-            - 8183:8080
+            - 8183:80
         tty: true
         stdin_open: true
 ```
 
-## NPM 部署
+## PNPM 部署
 
 ```bash
 # 安装依赖
-npm install
+pnpm install
 
 # 开发环境运行
-npm run dev
+pnpm run dev
 
 # 构建生产版本
-npm run build
+pnpm run build
 ```
 
 ## 鸣谢
