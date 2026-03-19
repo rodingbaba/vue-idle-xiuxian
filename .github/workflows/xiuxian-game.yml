@@ -39,6 +39,7 @@ jobs:
           tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          provenance: false
 
       - name: 清理旧版本镜像
         uses: actions/delete-package-versions@v5
