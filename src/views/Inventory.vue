@@ -372,9 +372,9 @@
           <n-button type="info" :disabled="playerStore.refinementStones === 0" @click="handleReforgeEquipment">洗练</n-button>
         </n-space>
         <n-space>
-          <n-button @click="equipItem(selectedEquipment)" :disabled="playerStore.level < selectedEquipment?.requiredRealm" v-if="selectedEquipment?.id != playerStore.equippedArtifacts[selectedEquipment?.slot || selectedEquipment?.type]?.id">装备</n-button>
-          <n-button @click="unequipItem(selectedEquipment?.slot || selectedEquipment?.type)" :disabled="playerStore.level < selectedEquipment?.requiredRealm" v-else>卸下</n-button>
-          <n-button type="error" @click="sellEquipment(selectedEquipment)" v-if="selectedEquipment?.id != playerStore.equippedArtifacts[selectedEquipment?.slot || selectedEquipment?.type]?.id">出售</n-button>
+          <n-button type="warning" @click="sellEquipment(selectedEquipment)" v-if="selectedEquipment?.id != playerStore.equippedArtifacts[selectedEquipment?.slot || selectedEquipment?.type]?.id">出售</n-button>
+          <n-button type="error" @click="equipItem(selectedEquipment)" :disabled="playerStore.level < selectedEquipment?.requiredRealm" v-if="selectedEquipment?.id != playerStore.equippedArtifacts[selectedEquipment?.slot || selectedEquipment?.type]?.id">装备</n-button>
+          <n-button type="error" @click="unequipItem(selectedEquipment?.slot || selectedEquipment?.type)" :disabled="playerStore.level < selectedEquipment?.requiredRealm" v-else>卸下</n-button>
         </n-space>
       </n-space>
     </template>
@@ -423,7 +423,8 @@
     uncommon: { name: '优质', type: 'info' },
     rare: { name: '稀有', type: 'success' },
     epic: { name: '极品', type: 'warning' },
-    legendary: { name: '仙品', type: 'error' }
+    legendary: { name: '仙品', type: 'error' },
+    mythic: { name: '仙品', type: 'error' }  // 丹药仙品品质键名为 mythic
   }
 
   const openHerbModal = (type, herb) => {
