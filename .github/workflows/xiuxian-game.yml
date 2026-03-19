@@ -34,3 +34,11 @@ jobs:
           push: true
           platforms: linux/amd64
           tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+
+      - name: 清理旧版本镜像
+        uses: actions/delete-package-versions@v5
+        with:
+          package-name: 'vue-idle-xiuxian'
+          package-type: 'container'
+          min-versions-to-keep: 0
+          delete-only-untagged-versions: 'true'
