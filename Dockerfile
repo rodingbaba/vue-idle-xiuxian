@@ -29,8 +29,8 @@ RUN echo 'server { \
     } \
 }' > /etc/nginx/conf.d/default.conf
 
-# 仅仅将第一阶段生成的体积较小的纯静态 dist 目录复制过来
-COPY --from=builder /workspace/dist /usr/share/nginx/html
+# 仅仅将第一阶段生成的体积较小的纯静态代码复制过来 (此项目配置了输出到 docs)
+COPY --from=builder /workspace/docs /usr/share/nginx/html
 
 # 暴露 80 端口
 EXPOSE 80
