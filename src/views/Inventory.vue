@@ -25,9 +25,14 @@
                       </n-button>
                     </n-space>
                   </template>
-                  <p v-if="playerStore.equippedArtifacts[type]">
-                    {{ playerStore.equippedArtifacts[type].name }}
-                  </p>
+                  <div v-if="playerStore.equippedArtifacts[type]" style="margin: 14px 0;">
+                    <n-space align="center">
+                      <span>{{ playerStore.equippedArtifacts[type].name }}</span>
+                      <n-tag v-if="playerStore.equippedArtifacts[type].qualityInfo" size="small" :style="{ color: playerStore.equippedArtifacts[type].qualityInfo.color }">
+                        {{ playerStore.equippedArtifacts[type].qualityInfo.name }}
+                      </n-tag>
+                    </n-space>
+                  </div>
                   <p v-else>未装备</p>
                   <template #footer>
                     <n-space justify="space-between">
@@ -92,6 +97,11 @@
                     </n-space>
                   </template>
                   <p>{{ pill.description }}</p>
+                  <n-space style="margin-top: 8px; font-size: 13px;" v-if="pill.effect">
+                    <n-text depth="3">
+                      效果：{{ formatPillEffect(pill.effect) }}
+                    </n-text>
+                  </n-space>
                 </n-card>
               </n-grid-item>
             </n-grid>
@@ -454,6 +464,33 @@
     const result = playerStore.usePill(pill)
     if (result.success) message.success(result.message)
     else message.error(result.message)
+  }
+
+  const formatPillEffect = (effect) => {
+    if (!effect) return '';
+    const typeMap = {
+      spiritRate: '灵气恢复',
+      cultivationRate: '修炼速度',
+      combatBoost: '战斗属性',
+      allAttributes: '全属性',
+      spiritCap: '灵力上限',
+      autoHeal: '生命回复',
+      spiritRecovery: '瞬回灵气',
+      cultivationEfficiency: '修炼效率',
+      comprehension: '悟性',
+      fireAttribute: '火境修炼'
+    };
+    const typeName = typeMap[effect.type] || '未知效果';
+    const valueStr = `+${Number((effect.value * 100).toFixed(1))}%`;
+    let durationStr = '';
+    if (effect.duration) {
+      if (effect.duration >= 3600 && effect.duration % 3600 === 0) {
+        durationStr = `，持续 ${effect.duration / 3600} 小时`;
+      } else {
+        durationStr = `，持续 ${Math.round(effect.duration / 60)} 分钟`;
+      }
+    }
+    return `${typeName} ${valueStr}${durationStr}`;
   }
 
   const petRarities = {
