@@ -5,6 +5,6 @@ services:
         container_name: xiuxian
         restart: unless-stopped
         ports:
-            - 8183:8080
+            - 8183:80
         tty: true
         stdin_open: true
